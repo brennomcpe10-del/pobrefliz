@@ -1,0 +1,132 @@
+{
+  "series": [
+    {
+      "id": "series-cronicas-infinito",
+      "title": "Crônicas do Infinito",
+      "synopsis": "Em um mundo onde a tecnologia e o mistério se entrelaçam, uma equipe de exploradores desafia os limites do espaço e do tempo em busca de respostas sobre o passado esquecido da humanidade.",
+      "genre": "Ficção Científica • Aventura • Mistério",
+      "year": "2025",
+      "bannerUrl": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1920&auto=format&fit=crop",
+      "rating": "14+",
+      "createdAt": 1787358554196
+    },
+    {
+      "id": "series-cyber-neon",
+      "title": "Cyber Neon: Nova Era",
+      "synopsis": "Nas sombras de uma megalópole futurista dominada por megacorporações e inteligências artificiais rebeldes, uma equipe de especialistas luta pela liberdade e pela verdade oculta no ciberespaço.",
+      "genre": "Cyberpunk • Ação • Suspense",
+      "year": "2026",
+      "bannerUrl": "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1920&auto=format&fit=crop",
+      "rating": "16+",
+      "createdAt": 1787790554196
+    },
+    {
+      "id": "series-reinos-perdidos",
+      "title": "Reinos Perdidos: A Era do Dragão",
+      "synopsis": "Após séculos de paz, as antigas runas mágicas despertam. Jovens guerreiros e magos partem em uma perigosa expedição através de montanhas místicas para deter a ruína do continente.",
+      "genre": "Fantasia Épica • Aventura • Magia",
+      "year": "2024",
+      "bannerUrl": "https://images.unsplash.com/photo-1514539079130-25950c84af65?q=80&w=1920&auto=format&fit=crop",
+      "rating": "12+",
+      "createdAt": 1788222554196
+    }
+  ],
+  "episodes": [
+    {
+      "id": "ep-infinito-s01e01",
+      "seriesId": "series-cronicas-infinito",
+      "title": "O Primeiro Contato",
+      "season": 1,
+      "episodeNumber": 1,
+      "description": "Após detectar uma transmissão misteriosa nas profundezas da órbita lunar, a tripulação da nave Horizon inicia uma jornada sem volta.",
+      "duration": 596,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop",
+      "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "fileName": "S01E01_O_Primeiro_Contato.mp4",
+      "fileSize": 158000000,
+      "fileType": "video/mp4",
+      "createdAt": 1787617754196,
+      "watched": true
+    },
+    {
+      "id": "ep-infinito-s01e02",
+      "seriesId": "series-cronicas-infinito",
+      "title": "Ecos do Vazio",
+      "season": 1,
+      "episodeNumber": 2,
+      "description": "Com os sistemas de navegação danificados por uma tempestade de radiação cósmica, a equipe deve tomar uma decisão arriscada.",
+      "duration": 634,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=800&auto=format&fit=crop",
+      "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+      "fileName": "S01E02_Ecos_do_Vazio.mp4",
+      "fileSize": 172000000,
+      "fileType": "video/mp4",
+      "createdAt": 1787790554196,
+      "watched": false
+    },
+    {
+      "id": "ep-infinito-s01e03",
+      "seriesId": "series-cronicas-infinito",
+      "title": "O Portal Proibido",
+      "season": 1,
+      "episodeNumber": 3,
+      "description": "Uma anomalia gravitacional revela uma estrutura alienígena antiga em rota de colisão com a estação espacial.",
+      "duration": 720,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=800&auto=format&fit=crop",
+      "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      "fileName": "S01E03_O_Portal_Proibido.mp4",
+      "fileSize": 85000000,
+      "fileType": "video/mp4",
+      "createdAt": 1787963354196,
+      "watched": false
+    },
+    {
+      "id": "ep-cyber-s01e01",
+      "seriesId": "series-cyber-neon",
+      "title": "Rede Subterrânea",
+      "season": 1,
+      "episodeNumber": 1,
+      "description": "Um especialista em dados é contratado para descriptografar um arquivo proibido que pode derrubar o conselho da megacidade.",
+      "duration": 540,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=800&auto=format&fit=crop",
+      "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+      "fileName": "S01E01_Rede_Subterranea.mp4",
+      "fileSize": 198000000,
+      "fileType": "video/mp4",
+      "createdAt": 1788049754196,
+      "watched": false
+    },
+    {
+      "id": "ep-cyber-s01e02",
+      "seriesId": "series-cyber-neon",
+      "title": "Fantasma no Código",
+      "season": 1,
+      "episodeNumber": 2,
+      "description": "Drones de segurança cercam o esconderijo do grupo após uma transmissão clandestina revelar segredos governamentais.",
+      "duration": 610,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop",
+      "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
+      "fileName": "S01E02_Fantasma_no_Codigo.mp4",
+      "fileSize": 142000000,
+      "fileType": "video/mp4",
+      "createdAt": 1788222554196,
+      "watched": false
+    },
+    {
+      "id": "ep-reinos-s01e01",
+      "seriesId": "series-reinos-perdidos",
+      "title": "O Chamado das Runas",
+      "season": 1,
+      "episodeNumber": 1,
+      "description": "Em uma vila pacífica nas montanhas, uma relíquia ancestral ganha vida própria após séculos adormecida sob o templo.",
+      "duration": 660,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop",
+      "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+      "fileName": "S01E01_O_Chamado_das_Runas.mp4",
+      "fileSize": 165000000,
+      "fileType": "video/mp4",
+      "createdAt": 1788308954196,
+      "watched": false
+    }
+  ]
+}

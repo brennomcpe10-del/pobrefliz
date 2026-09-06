@@ -1,0 +1,6 @@
+{
+  "name": "Portal de Episódios",
+  "description": "Plataforma para adicionar, gerenciar, assistir e baixar episódios de séries com upload fácil de arquivos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
