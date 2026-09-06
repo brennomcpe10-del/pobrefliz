@@ -129,10 +129,24 @@ export async function deleteEpisodeFromServer(episodeId: string): Promise<void> 
  */
 export async function uploadMediaFile(
   file: File | Blob,
-  fileName: string = 'video.mp4',
-  fileType: string = 'video/mp4',
+  fileName?: string | ((percent: number) => void),
+  fileType?: string,
   onProgress?: (percent: number) => void
 ): Promise<{ url: string; fileName: string; fileSize: number; fileType: string }> {
+  let resolvedFileName = (file as any).name || 'arquivo.mp4';
+  let resolvedFileType = file.type || 'video/mp4';
+  let progressCallback = onProgress;
+
+  if (typeof fileName === 'function') {
+    progressCallback = fileName;
+  } else if (typeof fileName === 'string' && fileName.trim()) {
+    resolvedFileName = fileName.trim();
+  }
+
+  if (fileType && typeof fileType === 'string' && fileType.trim()) {
+    resolvedFileType = fileType.trim();
+  }
+
   const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB por pedaço (rápido e seguro)
   const actualSize = file.size;
   const totalChunks = Math.max(1, Math.ceil(actualSize / CHUNK_SIZE));
@@ -157,21 +171,21 @@ export async function uploadMediaFile(
           uploadId,
           chunkIndex,
           totalChunks,
-          fileName,
+          resolvedFileName,
           actualSize,
-          fileType,
+          resolvedFileType,
           (chunkLoaded) => {
-            if (onProgress) {
+            if (progressCallback) {
               const uploadedBytes = start + chunkLoaded;
               const percent = Math.min(99, Math.round((uploadedBytes / actualSize) * 100));
-              onProgress(percent);
+              progressCallback(percent);
             }
           }
         );
 
         if (chunkIndex === totalChunks - 1 && result?.url) {
           finalResult = result;
-          if (onProgress) onProgress(100);
+          if (progressCallback) progressCallback(100);
         }
         success = true;
       } catch (err: any) {
@@ -227,7 +241,8 @@ function uploadSingleChunk(
       });
     }
 
-    xhr.open('POST', '/api/upload-chunk');
+    const queryUrl = `/api/upload-chunk?uploadId=${encodeURIComponent(uploadId)}&chunkIndex=${chunkIndex}&totalChunks=${totalChunks}&fileName=${encodeURIComponent(fileName)}&fileType=${encodeURIComponent(fileType)}`;
+    xhr.open('POST', queryUrl);
     xhr.withCredentials = true; // Necessário para cookies e validação de sessão em iframes
     xhr.setRequestHeader('Accept', 'application/json');
 

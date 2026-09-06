@@ -416,33 +416,53 @@ async function startServer() {
     res.json({ success: true, deletedId: id });
   });
 
-  // API: Upload video or image file to server storage (direct small file)
-  app.post(['/api/upload', '/api/upload/'], upload.single('file'), (req, res) => {
-    if (!req.file) {
+  // Helper to extract uploaded file whether it arrived via single or any
+  const getUploadedFile = (req: express.Request): Express.Multer.File | undefined => {
+    if (req.file) return req.file;
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      const preferred = (req.files as Express.Multer.File[]).find(
+        (f) => f.fieldname === 'chunk' || f.fieldname === 'file' || f.fieldname === 'video' || f.fieldname === 'media'
+      );
+      return preferred || (req.files as Express.Multer.File[])[0];
+    }
+    return undefined;
+  };
+
+  // API: Upload video or image file to server storage (direct small file or image banner)
+  app.post(['/api/upload', '/api/upload/'], upload.any(), (req, res) => {
+    const file = getUploadedFile(req);
+    if (!file) {
       res.status(400).json({ error: 'Nenhum arquivo enviado' });
       return;
     }
 
-    const publicUrl = `/uploads/${req.file.filename}`;
+    const publicUrl = `/uploads/${file.filename}`;
     res.json({
       url: publicUrl,
-      fileName: req.file.originalname,
-      fileSize: req.file.size,
-      fileType: req.file.mimetype,
+      fileName: file.originalname,
+      fileSize: file.size,
+      fileType: file.mimetype,
     });
   });
 
   // API: Chunked upload supporting files of any size (up to 4GB+) without hitting reverse proxy limits
-  app.post(['/api/upload-chunk', '/api/upload-chunk/'], chunkUpload.single('chunk'), (req, res) => {
+  app.post(['/api/upload-chunk', '/api/upload-chunk/'], chunkUpload.any(), (req, res) => {
     try {
-      const { uploadId, chunkIndex, totalChunks, fileName, fileSize, fileType } = req.body;
-      if (!req.file || !uploadId || chunkIndex === undefined || !totalChunks) {
+      const file = getUploadedFile(req);
+      const uploadId = req.body?.uploadId || req.query?.uploadId;
+      const rawIndex = req.body?.chunkIndex !== undefined ? req.body.chunkIndex : req.query?.chunkIndex;
+      const rawTotal = req.body?.totalChunks !== undefined ? req.body.totalChunks : req.query?.totalChunks;
+      const fileName = req.body?.fileName || req.query?.fileName || 'video.mp4';
+      const fileSize = req.body?.fileSize || req.query?.fileSize;
+      const fileType = req.body?.fileType || req.query?.fileType || 'video/mp4';
+
+      if (!file || !file.buffer || !uploadId || rawIndex === undefined || !rawTotal) {
         res.status(400).json({ error: 'Parâmetros de upload fragmentado inválidos' });
         return;
       }
 
-      const idx = parseInt(chunkIndex, 10);
-      const total = parseInt(totalChunks, 10);
+      const idx = parseInt(String(rawIndex), 10);
+      const total = parseInt(String(rawTotal), 10);
       const cleanUploadId = String(uploadId).replace(/[^a-zA-Z0-9_-]/g, '');
       const partFile = path.join(CHUNKS_DIR, `part_${cleanUploadId}`);
 
@@ -450,11 +470,11 @@ async function startServer() {
         try { fs.unlinkSync(partFile); } catch {}
       }
 
-      fs.appendFileSync(partFile, req.file.buffer);
+      fs.appendFileSync(partFile, file.buffer);
 
       if (idx === total - 1) {
         // All chunks received, assemble to final uploads directory
-        const originalName = fileName || 'video.mp4';
+        const originalName = String(fileName || 'video.mp4');
         const ext = path.extname(originalName) || '.mp4';
         const base = path.basename(originalName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
         const unique = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -498,6 +518,25 @@ async function startServer() {
     const resetData = { series: DEFAULT_SERIES, episodes: DEFAULT_EPISODES };
     writeDatabase(resetData);
     res.json(resetData);
+  });
+
+  // Dedicated Multer and API error handling middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof multer.MulterError) {
+      console.warn(`[Multer Handled] Code: ${err.code}, Field: ${err.field}, Message: ${err.message}`);
+      res.status(400).json({
+        error: `Erro no upload: ${err.message} (${err.code || 'MULTER_ERROR'})`,
+        code: err.code,
+        field: err.field,
+      });
+      return;
+    }
+    if (err) {
+      console.error('[API Unhandled Error]', err);
+      res.status(500).json({ error: err.message || 'Erro interno no servidor' });
+      return;
+    }
+    next();
   });
 
   // Safe fallback for unhandled /api/* routes
