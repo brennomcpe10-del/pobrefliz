@@ -10,9 +10,16 @@ import {
   Film,
   Maximize2,
   Tv,
+  ExternalLink,
+  Cloud,
 } from 'lucide-react';
 import { Episode, SeriesInfo } from '../types';
-import { formatBytes, formatDuration, downloadEpisodeFile } from '../utils/helpers';
+import {
+  formatBytes,
+  formatDuration,
+  downloadEpisodeFile,
+  parseGoogleDriveUrl,
+} from '../utils/helpers';
 
 interface VideoPlayerModalProps {
   episode: Episode | null;
@@ -89,6 +96,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   const prevEpisode = currentIndex > 0 ? allEpisodes[currentIndex - 1] : null;
   const nextEpisode = currentIndex < allEpisodes.length - 1 ? allEpisodes[currentIndex + 1] : null;
 
+  const gdrive = parseGoogleDriveUrl(episode.videoUrl);
+
   const handleDownload = () => {
     downloadEpisodeFile(episode);
   };
@@ -116,6 +125,20 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            {/* Google Drive Direct Link */}
+            {gdrive.isGoogleDrive && (
+              <a
+                href={gdrive.viewUrl || episode.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-colors cursor-pointer"
+                title="Abrir página no Google Drive"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Ver no Drive</span>
+              </a>
+            )}
+
             {/* Download Button in Player */}
             <button
               id="player-download-btn"
@@ -141,8 +164,18 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         </div>
 
         {/* Video Screen Container */}
-        <div className="relative aspect-video w-full bg-black flex items-center justify-center">
-          {videoSrc ? (
+        <div className="relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden">
+          {gdrive.isGoogleDrive && gdrive.previewUrl ? (
+            <div className="w-full h-full relative flex items-center justify-center bg-black min-h-[300px] sm:min-h-[440px] md:min-h-[520px]">
+              <iframe
+                src={gdrive.previewUrl}
+                title={episode.title}
+                className="w-full h-full border-0 absolute inset-0"
+                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : videoSrc ? (
             <video
               ref={videoRef}
               src={videoSrc}
@@ -206,6 +239,13 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
           {/* Technical Details Bar */}
           <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-neutral-400 border-t border-neutral-800/80">
+            {gdrive.isGoogleDrive && (
+              <div className="flex items-center gap-1.5 bg-amber-950/40 border border-amber-500/30 text-amber-300 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                <Cloud className="w-3.5 h-3.5 text-amber-400" />
+                <span>Transmissão: <strong className="text-amber-200">Google Drive HD</strong></span>
+              </div>
+            )}
+
             {episode.duration ? (
               <div className="flex items-center gap-1.5 bg-neutral-950 px-3 py-1.5 rounded-lg border border-neutral-800 text-[10px] font-bold uppercase tracking-wider">
                 <Clock className="w-3.5 h-3.5 text-neutral-500" />

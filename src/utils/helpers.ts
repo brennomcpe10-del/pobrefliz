@@ -1,5 +1,51 @@
 import { Episode } from '../types';
 
+export interface GoogleDriveMediaInfo {
+  isGoogleDrive: boolean;
+  fileId?: string;
+  previewUrl?: string;
+  downloadUrl?: string;
+  viewUrl?: string;
+  thumbnailUrl?: string;
+}
+
+/**
+ * Parses Google Drive links in various formats:
+ * - https://drive.google.com/file/d/1LG2AOqsH22g8Ep7hZOY_qsnqU4pXDb61/view
+ * - https://drive.google.com/file/d/1LG2AOqsH22g8Ep7hZOY_qsnqU4pXDb61/preview
+ * - https://drive.google.com/open?id=1LG2AOqsH22g8Ep7hZOY_qsnqU4pXDb61
+ * - https://drive.google.com/uc?id=1LG2AOqsH22g8Ep7hZOY_qsnqU4pXDb61
+ */
+export function parseGoogleDriveUrl(url?: string): GoogleDriveMediaInfo {
+  if (!url || typeof url !== 'string') {
+    return { isGoogleDrive: false };
+  }
+
+  const trimmed = url.trim();
+
+  // Pattern 1: /file/d/ID/...
+  const matchFile = trimmed.match(/(?:drive|docs)\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i);
+  // Pattern 2: id=ID query param
+  const matchParam = trimmed.match(/(?:drive|docs)\.google\.com\/.*[?&]id=([a-zA-Z0-9_-]+)/i);
+  // Pattern 3: googleusercontent.com/d/ID
+  const matchUserContent = trimmed.match(/googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/i);
+
+  const fileId = matchFile?.[1] || matchParam?.[1] || matchUserContent?.[1];
+
+  if (fileId && fileId.length >= 10) {
+    return {
+      isGoogleDrive: true,
+      fileId,
+      previewUrl: `https://drive.google.com/file/d/${fileId}/preview`,
+      downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}`,
+      viewUrl: `https://drive.google.com/file/d/${fileId}/view`,
+      thumbnailUrl: `https://lh3.googleusercontent.com/d/${fileId}=w640`,
+    };
+  }
+
+  return { isGoogleDrive: false };
+}
+
 export function formatBytes(bytes?: number): string {
   if (bytes === undefined || bytes === null || isNaN(bytes) || bytes === 0) return '0 B';
   const k = 1024;
@@ -117,6 +163,19 @@ export async function generateVideoThumbnail(
  * Triggers direct browser download of the episode video file
  */
 export function downloadEpisodeFile(episode: Episode): void {
+  const gdrive = parseGoogleDriveUrl(episode.videoUrl);
+  if (gdrive.isGoogleDrive && (gdrive.downloadUrl || gdrive.viewUrl)) {
+    const targetUrl = gdrive.downloadUrl || gdrive.viewUrl!;
+    const a = document.createElement('a');
+    a.href = targetUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return;
+  }
+
   const fileExt = episode.fileName ? episode.fileName.split('.').pop() || 'mp4' : 'mp4';
   const cleanTitle = episode.title.replace(/[/\\?%*:|"<>]/g, '_').trim();
   const downloadFileName = `S${String(episode.season).padStart(2, '0')}E${String(

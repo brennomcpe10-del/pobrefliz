@@ -12,9 +12,10 @@ import {
   Lock,
   Smartphone,
   RefreshCw,
+  Cloud,
 } from 'lucide-react';
 import { Episode } from '../types';
-import { formatBytes, formatDuration, downloadEpisodeFile } from '../utils/helpers';
+import { formatBytes, formatDuration, downloadEpisodeFile, parseGoogleDriveUrl } from '../utils/helpers';
 
 interface EpisodeCardProps {
   episode: Episode;
@@ -95,7 +96,15 @@ export const EpisodeCard: React.FC<EpisodeCardProps> = ({
           <span className="px-3 py-1 bg-blue-600 text-[10px] uppercase font-bold rounded-full tracking-wider text-white shadow-sm">
             {codeString}
           </span>
-          {episode.videoUrl && (episode.videoUrl.startsWith('/uploads/') || episode.videoUrl.startsWith('http')) ? (
+          {parseGoogleDriveUrl(episode.videoUrl).isGoogleDrive ? (
+            <span
+              className="px-2 py-1 bg-black/70 backdrop-blur-md text-[10px] uppercase font-bold rounded-full tracking-wider text-amber-300 border border-amber-500/40 flex items-center gap-1"
+              title="Streaming direto do Google Drive"
+            >
+              <Cloud className="w-3 h-3 text-amber-400" />
+              Drive
+            </span>
+          ) : episode.videoUrl && (episode.videoUrl.startsWith('/uploads/') || episode.videoUrl.startsWith('http')) ? (
             <span
               className="px-2 py-1 bg-black/60 backdrop-blur-md text-[10px] uppercase font-bold rounded-full tracking-wider text-emerald-400 border border-emerald-500/30 flex items-center gap-1"
               title="Disponível para assistir em qualquer celular e PC"

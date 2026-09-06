@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Loader2,
   Tv,
+  Cloud,
 } from 'lucide-react';
 import { Episode, Series } from '../types';
 import {
@@ -16,6 +17,7 @@ import {
   formatDuration,
   cleanFileNameToTitle,
   generateVideoThumbnail,
+  parseGoogleDriveUrl,
 } from '../utils/helpers';
 import { uploadMediaFile } from '../utils/api';
 
@@ -38,9 +40,10 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
   seriesList,
   activeSeriesId,
 }) => {
-  const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
+  const [uploadMode, setUploadMode] = useState<'file' | 'drive' | 'url'>('file');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrlInput, setVideoUrlInput] = useState('');
+  const [driveUrlInput, setDriveUrlInput] = useState('');
 
   // Form Fields
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('');
@@ -82,7 +85,19 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
       setFileSize(episodeToEdit.fileSize || 0);
       setFileName(episodeToEdit.fileName || '');
       setVideoUrlInput(episodeToEdit.videoUrl || '');
-      setUploadMode(episodeToEdit.videoUrl?.startsWith('/uploads/') ? 'file' : 'url');
+
+      const parsedGdrive = parseGoogleDriveUrl(episodeToEdit.videoUrl);
+      if (parsedGdrive.isGoogleDrive) {
+        setUploadMode('drive');
+        setDriveUrlInput(parsedGdrive.viewUrl || episodeToEdit.videoUrl || '');
+      } else if (episodeToEdit.videoUrl?.startsWith('/uploads/')) {
+        setUploadMode('file');
+        setDriveUrlInput('');
+      } else {
+        setUploadMode(episodeToEdit.videoUrl ? 'url' : 'file');
+        setDriveUrlInput('');
+      }
+
       setSelectedFile(null);
     } else {
       // Find latest season and suggest next episode number for the selected series
@@ -103,12 +118,27 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
       setFileName('');
       setSelectedFile(null);
       setVideoUrlInput('');
+      setDriveUrlInput('');
       setUploadMode('file');
       setErrorMsg('');
     }
   }, [isOpen, episodeToEdit, existingEpisodes, seriesList, activeSeriesId]);
 
   if (!isOpen) return null;
+
+  const handleDriveUrlChange = (value: string) => {
+    setDriveUrlInput(value);
+    setErrorMsg('');
+    const parsed = parseGoogleDriveUrl(value);
+    if (parsed.isGoogleDrive && parsed.fileId) {
+      if (!thumbnailUrl && parsed.thumbnailUrl) {
+        setThumbnailUrl(parsed.thumbnailUrl);
+      }
+      if (!title || title.trim() === '') {
+        setTitle(`Episódio ${episodeNumber}`);
+      }
+    }
+  };
 
   const handleFileChange = async (file: File) => {
     if (!file.type.startsWith('video/') && !file.name.match(/\.(mp4|mkv|webm|avi|mov|m4v)$/i)) {
@@ -169,6 +199,11 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
       return;
     }
 
+    if (uploadMode === 'drive' && !driveUrlInput.trim() && !episodeToEdit) {
+      setErrorMsg('Por favor, informe o link do vídeo no Google Drive.');
+      return;
+    }
+
     if (uploadMode === 'url' && !videoUrlInput.trim() && !episodeToEdit) {
       setErrorMsg('Por favor, informe a URL direta do vídeo.');
       return;
@@ -179,9 +214,23 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
 
     try {
       let finalVideoUrl = episodeToEdit?.videoUrl || '';
+      let effectiveThumbnail = thumbnailUrl || episodeToEdit?.thumbnailUrl || '';
+      let effectiveFileName = fileName || (selectedFile?.name || episodeToEdit?.fileName || `episodio_${season}x${episodeNumber}.mp4`);
 
-      // If user selected a local file, upload it to the server so ALL devices (phones, tablets, PCs) can watch it!
-      if (uploadMode === 'file' && selectedFile) {
+      if (uploadMode === 'drive') {
+        const parsedDrive = parseGoogleDriveUrl(driveUrlInput.trim());
+        if (!parsedDrive.isGoogleDrive) {
+          setErrorMsg('O link informado não é um link válido do Google Drive. Exemplo: https://drive.google.com/file/d/1LG2AOqsH22g8Ep7hZOY_qsnqU4pXDb61/view');
+          setIsSaving(false);
+          return;
+        }
+        finalVideoUrl = parsedDrive.previewUrl || driveUrlInput.trim();
+        effectiveFileName = 'Google Drive Video';
+        if (!effectiveThumbnail && parsedDrive.thumbnailUrl) {
+          effectiveThumbnail = parsedDrive.thumbnailUrl;
+        }
+      } else if (uploadMode === 'file' && selectedFile) {
+        // If user selected a local file, upload it to the server so ALL devices (phones, tablets, PCs) can watch it!
         setUploadProgress(1);
         try {
           const uploadRes = await uploadMediaFile(
@@ -202,7 +251,16 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
           throw new Error(`Falha no upload do vídeo para o servidor: ${uploadErr?.message || 'Erro de conexão'}`);
         }
       } else if (uploadMode === 'url') {
-        finalVideoUrl = videoUrlInput.trim();
+        const parsedDrive = parseGoogleDriveUrl(videoUrlInput.trim());
+        if (parsedDrive.isGoogleDrive) {
+          finalVideoUrl = parsedDrive.previewUrl || videoUrlInput.trim();
+          effectiveFileName = 'Google Drive Video';
+          if (!effectiveThumbnail && parsedDrive.thumbnailUrl) {
+            effectiveThumbnail = parsedDrive.thumbnailUrl;
+          }
+        } else {
+          finalVideoUrl = videoUrlInput.trim();
+        }
       }
 
       if (!finalVideoUrl && !selectedFile && !episodeToEdit?.videoBlob) {
@@ -219,10 +277,10 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
         episodeNumber: Number(episodeNumber) || 1,
         description: description.trim(),
         duration: duration || (episodeToEdit?.duration || 0),
-        thumbnailUrl: thumbnailUrl || episodeToEdit?.thumbnailUrl || '',
+        thumbnailUrl: effectiveThumbnail,
         videoUrl: finalVideoUrl,
         videoBlob: selectedFile || episodeToEdit?.videoBlob,
-        fileName: fileName || (selectedFile?.name || episodeToEdit?.fileName || `episodio_${season}x${episodeNumber}.mp4`),
+        fileName: effectiveFileName,
         fileSize: fileSize || selectedFile?.size || episodeToEdit?.fileSize || 0,
         fileType: selectedFile?.type || episodeToEdit?.fileType || 'video/mp4',
         createdAt: episodeToEdit?.createdAt || Date.now(),
@@ -304,35 +362,106 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
           )}
 
           {/* Mode Switcher */}
-          <div className="flex rounded-xl bg-neutral-950 p-1 border border-neutral-800">
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-neutral-950 p-1 border border-neutral-800">
+            <button
+              type="button"
+              onClick={() => setUploadMode('drive')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                uploadMode === 'drive'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-sm'
+                  : 'text-neutral-400 hover:text-neutral-200'
+              }`}
+            >
+              <Cloud className="w-3.5 h-3.5 text-amber-400" />
+              <span>Google Drive</span>
+            </button>
             <button
               type="button"
               onClick={() => setUploadMode('file')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 uploadMode === 'file'
                   ? 'bg-neutral-800 text-white shadow-sm'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              <UploadCloud className="w-4 h-4 text-blue-400" />
-              Arquivo do Dispositivo
+              <UploadCloud className="w-3.5 h-3.5 text-blue-400" />
+              <span>Arquivo Local</span>
             </button>
             <button
               type="button"
               onClick={() => setUploadMode('url')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 uploadMode === 'url'
                   ? 'bg-neutral-800 text-white shadow-sm'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              <LinkIcon className="w-4 h-4 text-blue-400" />
-              Link Direto Web
+              <LinkIcon className="w-3.5 h-3.5 text-blue-400" />
+              <span>Link Web Direto</span>
             </button>
           </div>
 
           {/* Video Selection Area */}
-          {uploadMode === 'file' ? (
+          {uploadMode === 'drive' ? (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-amber-400 uppercase tracking-widest flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Cloud className="w-3.5 h-3.5" />
+                    Link do Arquivo no Google Drive *
+                  </span>
+                  <span className="text-[10px] text-amber-500/80 lowercase">qualquer pessoa com o link</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={driveUrlInput}
+                    onChange={(e) => handleDriveUrlChange(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/1LG2AOqsH22g8Ep7hZOY_qsnqU4pXDb61/view"
+                    className="w-full pl-4 pr-24 py-3 rounded-xl bg-neutral-800 border border-neutral-700 focus:border-amber-500 focus:outline-none text-white text-sm placeholder-neutral-500 transition-colors"
+                  />
+                  {parseGoogleDriveUrl(driveUrlInput).isGoogleDrive ? (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 px-2 py-0.5 rounded text-[11px] font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Link Válido</span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {parseGoogleDriveUrl(driveUrlInput).isGoogleDrive ? (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Vídeo do Google Drive identificado!</span>
+                  </div>
+                  <p className="text-xs text-neutral-300 leading-relaxed">
+                    ID do arquivo: <code className="text-amber-300 font-mono font-bold bg-black/40 px-1.5 py-0.5 rounded">{parseGoogleDriveUrl(driveUrlInput).fileId}</code>.
+                    O vídeo será reproduzido pelo player embutido de alta qualidade e poderá ser baixado pelos usuários.
+                  </p>
+                  <div className="flex items-start gap-2 pt-1 text-[11px] text-amber-200/90 bg-amber-950/40 p-2.5 rounded-xl border border-amber-500/20">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Aviso de permissão:</strong> Certifique-se de que o arquivo no Google Drive está com o compartilhamento definido como <strong>&quot;Qualquer pessoa com o link&quot;</strong>.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-400 space-y-1.5">
+                  <p className="font-semibold text-neutral-300 flex items-center gap-1.5">
+                    <Cloud className="w-3.5 h-3.5 text-amber-400" />
+                    Como adicionar pelo Google Drive:
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-neutral-400">
+                    <li>Envie seu vídeo para o Google Drive.</li>
+                    <li>Clique com o botão direito no arquivo &gt; <strong>Compartilhar</strong>.</li>
+                    <li>Em Acesso geral, altere para <strong>&quot;Qualquer pessoa com o link&quot;</strong>.</li>
+                    <li>Copie o link (ex: <code>.../file/d/SEU_ID/view</code>) e cole no campo acima!</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+          ) : uploadMode === 'file' ? (
             <div>
               <input
                 ref={fileInputRef}
@@ -528,6 +657,7 @@ export const EpisodeUploadModal: React.FC<EpisodeUploadModalProps> = ({
                   <img
                     src={thumbnailUrl}
                     alt="Miniatura"
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
                 </div>
